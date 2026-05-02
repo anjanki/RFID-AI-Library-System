@@ -1,4 +1,5 @@
 import os
+from flask_cors import CORS
 from flask import Flask, request, jsonify
 import mysql.connector
 from dotenv import load_dotenv
@@ -11,6 +12,7 @@ print("USER:", os.getenv("DB_USER"))
 print("PASS:", os.getenv("DB_PASS"))
 
 app = Flask(__name__)
+CORS(app)
 # -----------------------------
 # Database Connection
 # -----------------------------
