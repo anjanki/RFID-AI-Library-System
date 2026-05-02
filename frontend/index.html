@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RFID Smart Library Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f8;
+        }
+
+        h1 {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        input, select, button {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background: #333;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #555;
+        }
+
+        table {
+            width: 90%;
+            margin: auto;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background: #333;
+            color: white;
+        }
+
+        .allowed { color: green; }
+        .denied { color: red; }
+
+        #stats {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>📚 RFID Smart Library Dashboard</h1>
+
+<div class="controls">
+    <input id="search" placeholder="Search..." onkeyup="filterData()">
+
+    <select id="statusFilter" onchange="filterData()">
+        <option value="">All</option>
+        <option value="allowed">Allowed</option>
+        <option value="denied">Denied</option>
+    </select>
+
+    <button onclick="toggleSort()" id="sortBtn">Latest First</button>
+    <button onclick="loadLogs()">Refresh</button>
+</div>
+
+<div id="stats">
+    Total: <b id="total">0</b> |
+    <span style="color:green">Allowed: <b id="allowed">0</b></span> |
+    <span style="color:red">Denied: <b id="denied">0</b></span>
+</div>
+
+<table>
+<thead>
+<tr>
+    <th>ID</th>
+    <th>RFID</th>
+    <th>Book</th>
+    <th>Time</th>
+    <th>Status</th>
+</tr>
+</thead>
+<tbody id="table"></tbody>
+</table>
+
+<script>
+let allData = [];
+let desc = true;
+
+// Load logs
+async function loadLogs() {
+    const res = await fetch("http://127.0.0.1:5000/logs");
+    allData = await res.json();
+    apply();
+}
+
+// Apply filters + sort
+function apply() {
+    let data = [...allData];
+
+    const search = document.getElementById("search").value.toLowerCase();
+    const status = document.getElementById("statusFilter").value;
+
+    data = data.filter(d =>
+        (d.rfid.toLowerCase().includes(search) ||
+         (d.book_name && d.book_name.toLowerCase().includes(search))) &&
+        (status === "" || d.result === status)
+    );
+
+    data.sort((a,b)=> desc ? b.id-a.id : a.id-b.id);
+
+    render(data);
+}
+
+// Render table
+function render(data) {
+    let html = "";
+
+    if (data.length === 0) {
+        html = "<tr><td colspan='5'>No Data</td></tr>";
+    } else {
+        data.forEach(d => {
+            html += `
+            <tr>
+                <td>${d.id}</td>
+                <td>${d.rfid}</td>
+                <td>${d.book_name || "Unknown"}</td>
+                <td>${d.timestamp}</td>
+                <td class="${d.result}">${d.result}</td>
+            </tr>`;
+        });
+    }
+
+    document.getElementById("table").innerHTML = html;
+
+    // Stats
+    document.getElementById("total").innerText = data.length;
+    document.getElementById("allowed").innerText =
+        data.filter(d=>d.result==="allowed").length;
+    document.getElementById("denied").innerText =
+        data.filter(d=>d.result==="denied").length;
+}
+
+// Filter
+function filterData() {
+    apply();
+}
+
+// Sort toggle
+function toggleSort() {
+    desc = !desc;
+    document.getElementById("sortBtn").innerText =
+        desc ? "Latest First" : "Oldest First";
+    apply();
+}
+
+// Auto refresh
+loadLogs();
+setInterval(loadLogs, 3000);
+</script>
+
+</body>
+</html>
